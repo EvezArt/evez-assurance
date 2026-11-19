@@ -1,0 +1,90 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>EVEZ ALL-DATA MAP</title><style>
+:root{--g:#e0b64a;--bg:#0b0906}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#d9cdb0;font-family:Georgia,serif}
+.hdr{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;
+border-bottom:2px solid var(--g);background:linear-gradient(180deg,#161207,#0b0906);position:sticky;top:0;z-index:5}
+.hdr h1{margin:0;font-size:15px;letter-spacing:3px;color:var(--g);font-weight:400}
+.live{display:flex;gap:12px;font-size:11px;color:#9a8b6d;align-items:center;font-family:monospace}
+.pulse{width:9px;height:9px;border-radius:50%;background:#5fd47a;box-shadow:0 0 9px #5fd47a;animation:bl 1.6s infinite}
+@keyframes bl{50%{opacity:.25}}
+.tot{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:6px;padding:10px 16px}
+.card{border:1px solid #4a3d24;border-radius:6px;padding:6px 8px;background:#120e08;text-align:center}
+.card b{display:block;font-size:17px;color:var(--g)}
+.card span{font-size:9px;letter-spacing:1px;color:#8a7d63;text-transform:uppercase}
+h2{font-size:11px;letter-spacing:2px;color:var(--g);margin:14px 16px 6px;font-weight:400}
+svg{display:block;width:100%}
+.bars{padding:0 16px 16px}
+.bar{display:flex;align-items:center;gap:8px;font-size:11px;margin:3px 0;font-family:monospace;color:#b9ab8c}
+.bar i{display:block;height:8px;background:linear-gradient(90deg,#e0b64a,#8a6d1e);border-radius:2px}
+</style></head><body>
+<div class="hdr"><h1>EVEZ &middot; ALL-DATA MAP</h1>
+<div class="live"><span class="pulse"></span><span id="hb">MAPPING</span><span id="tick">poll 0</span></div></div>
+<div class="tot" id="totals"></div>
+<h2>ATTACK SURFACE — every sealed ThreatIntel record, by origin ASN</h2>
+<svg id="bub" viewBox="0 0 1000 430"></svg>
+<h2>ORIGIN COUNTRIES</h2><div class="bars" id="countries"></div>
+<h2>FIRE CORPUS — poly_c raw, colour = provenance</h2>
+<svg id="fire" viewBox="0 0 1000 150"></svg>
+<script>
+const API="https://cipher-copy-copy-20f1d98a.base44.app/functions/evezDataMap";
+const NS="http://www.w3.org/2000/svg";
+const PC={computed_v2:"#5fd47a",assigned_literal:"#e0554f",unreproducible:"#8b6fd4"};
+function el(t,a){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e}
+let poll=0,last=null;
+function totals(t){
+ const g=document.getElementById("totals");
+ g.innerHTML=Object.entries(t).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
+  '<div class="card"><b>'+v+'</b><span>'+k+'</span></div>').join("");
+}
+function bubbles(a){
+ const S=document.getElementById("bub");S.innerHTML="";
+ const top=a.top.slice(0,60);
+ const max=top[0]?top[0].n:1;
+ const cols=10,cell=96,pad=24;
+ top.forEach((x,i)=>{
+  const cx=pad+(i%cols)*cell+cell/2-10, cy=pad+Math.floor(i/cols)*72+22;
+  const r=Math.max(6,Math.min(26,26*Math.sqrt(x.n/max)));
+  const c=x.n>=80?"#e0554f":x.n>=30?"#e0b64a":"#6b7fa8";
+  const g=el("g",{});
+  g.appendChild(el("circle",{cx:cx,cy:cy,r:r,fill:c,"fill-opacity":.22,stroke:c,"stroke-width":1.4}));
+  const n=el("text",{x:cx,y:cy+3,"text-anchor":"middle","font-size":9,fill:c,"font-family":"monospace"});
+  n.textContent=x.n;g.appendChild(n);
+  const l=el("text",{x:cx,y:cy+r+9,"text-anchor":"middle","font-size":7.5,fill:"#8a7d63","font-family":"monospace"});
+  l.textContent=(x.asn||"?").replace("AS","").slice(0,13);g.appendChild(l);
+  S.appendChild(g);
+ });
+ const cap=el("text",{x:24,y:412,"font-size":9,fill:"#6b5f4a","font-family":"monospace"});
+ cap.textContent=a.total+" sealed records / "+a.distinct_asns+" distinct ASNs / showing top 60";
+ S.appendChild(cap);
+}
+function countries(cs){
+ const g=document.getElementById("countries"),mx=cs[0]?cs[0][1]:1;
+ g.innerHTML=cs.map(([c,n])=>'<div class="bar"><span style="width:130px">'+c+'</span>'+
+  '<i style="width:'+(300*n/mx)+'px"></i><span>'+n+'</span></div>').join("");
+}
+function firestrip(f){
+ const S=document.getElementById("fire");S.innerHTML="";
+ const max=Math.max(...f.map(x=>x.v),1);
+ f.forEach((x,i)=>{
+  const w=Math.max(6,Math.min(22,6+16*Math.sqrt(x.v/max)));
+  const h=Math.max(6,Math.min(90,10+80*(x.v/max)));
+  const cx=14+i*19.6, cy=110-h;
+  const c=PC[x.p]||"#8b6fd4";
+  S.appendChild(el("rect",{x:cx,y:cy,width:w,height:h,fill:c,"fill-opacity":.75,stroke:"#0b0906"}));
+ });
+ const t=el("text",{x:14,y:14,"font-size":9,fill:"#8a7d63","font-family":"monospace"});
+ t.textContent="49 events · green verified · red stamped · purple unsourced";S.appendChild(t);
+}
+async function beat(){
+ poll++;document.getElementById("tick").textContent="poll "+poll;
+ try{
+  const r=await fetch(API+"?t="+Date.now());const d=await r.json();
+  totals(d.totals);bubbles(d.attacks);countries(d.attacks.countries);firestrip(d.fire);
+  document.getElementById("hb").textContent="LIVE · "+new Date(d.generated_at).toISOString().slice(11,19);
+  last=d;
+ }catch(e){document.getElementById("hb").textContent="STALE (fetch failed)";}
+ setTimeout(beat,20000);
+}
+beat();
+</script></body></html>
