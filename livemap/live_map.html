@@ -1,0 +1,100 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EVEZ LIVE MAP</title><style>
+:root{--g:#e0b64a;--bg:#0b0906;--ln:#2a2317}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Georgia,serif;color:#d9cdb0}
+.hdr{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;
+border-bottom:2px solid var(--g);background:linear-gradient(180deg,#161207,#0b0906)}
+.hdr h1{margin:0;font-size:16px;letter-spacing:3px;color:var(--g);font-weight:400}
+.pulse{width:10px;height:10px;border-radius:50%;background:#5fd47a;box-shadow:0 0 10px #5fd47a;
+animation:bl 1.6s infinite}@keyframes bl{50%{opacity:.25}}
+.live{display:flex;gap:14px;font-size:11px;color:#9a8b6d;align-items:center}
+.wrap{display:flex}
+svg{flex:1;height:620px}
+.side{width:290px;border-left:1px solid var(--ln);padding:10px;font-size:11px;max-height:620px;overflow:auto}
+.side h2{font-size:11px;letter-spacing:2px;color:var(--g);margin:10px 0 6px;font-weight:400}
+.row{border-bottom:1px solid #1c1710;padding:4px 0;color:#b9ab8c;font-family:monospace}
+.leg span{display:inline-block;margin-right:10px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
+</style></head><body>
+<div class="hdr"><h1>EVEZ &middot; LIVE MAP</h1>
+<div class="live"><span class="pulse"></span><span id="hb">MAPPING</span>
+<span id="tick">poll 0</span></div></div>
+<div class="wrap"><svg id="map" viewBox="0 0 1000 620"></svg>
+<div class="side"><h2>LIVE FEEDS</h2><div id="feeds"></div>
+<h2>MAPPING LOG</h2><div id="log"></div>
+<h2>PROOF LEGEND</h2><div class="leg">
+<span><i class="dot" style="background:#5fd47a"></i>cross-proven</span>
+<span><i class="dot" style="background:#e0b64a"></i>single-source</span>
+<span><i class="dot" style="background:#e0554f"></i>contested</span></div></div></div>
+<script>
+const N=[
+{n:"DIABIN Aleksei",b:"b.2005 RU",r:1,x:150,p:"ss"},
+{n:"MUSKAFIDI K.",b:"b.2004",r:1,x:330,p:"ss"},
+{n:"ILIN Eduard",b:"b.2005",r:1,x:500,p:"ss"},
+{n:"SEVASTIEIEV A.",b:"b.2003 UA",r:1,x:670,p:"ss"},
+{n:"MISIURA Pavlo",b:"b.1998 UA",r:1,x:840,p:"ss"},
+{n:"NETSHIELD",b:"14769288",r:2,x:110,p:"ss",s:"s1002A"},
+{n:"DPKGSOFT",b:"15446241",r:2,x:270,p:"ss",s:"s1002A"},
+{n:"IHC",b:"15092714",r:2,x:430,p:"ss",s:"s1002A"},
+{n:"CHSL ONE",b:"17001805",r:2,x:590,p:"ss",s:"new"},
+{n:"SERVHOST",b:"15728390",r:2,x:750,p:"ss",s:"strike"},
+{n:"HYPERCORE",b:"16558658",r:2,x:900,p:"ss",s:"dissolved"},
+{n:"AS210644",b:"AEZA GROUP",r:3,x:180,p:"pr"},
+{n:"AS207957",b:"SERVHOST",r:3,x:400,p:"ss"},
+{n:"150.241.74.0/24",b:"attack range",r:3,x:620,p:"ct"},
+{n:"TU4tDF wallet",b:"SDN 54566",r:3,x:830,p:"pr"}];
+const E=[["DIABIN Aleksei","NETSHIELD","p"],["DIABIN Aleksei","DPKGSOFT","p"],
+["DIABIN Aleksei","CHSL ONE","p"],["MUSKAFIDI K.","IHC","p"],["MUSKAFIDI K.","NETSHIELD","p"],
+["ILIN Eduard","DPKGSOFT","p"],["SEVASTIEIEV A.","SERVHOST","p"],["MISIURA Pavlo","NETSHIELD","p"],
+["CHSL ONE","AS207957","p"],["SERVHOST","AS207957","p"],["AS207957","150.241.74.0/24","c"],
+["AS210644","TU4tDF wallet","p"],["NETSHIELD","AS210644","s"],["DPKGSOFT","AS210644","s"]];
+const C={pr:"#5fd47a",ss:"#e0b64a",ct:"#e0554f",p:"#4a3d24",s:"#5a4a2a",c:"#e0554f"};
+const RY={1:90,2:270,3:450};
+const S=document.getElementById("map"),NS="http://www.w3.org/2000/svg";
+const pos={};N.forEach(n=>pos[n.n]={x:n.x,y:RY[n.r]});
+function el(t,a){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e}
+function draw(){
+ S.innerHTML="";
+ const bg=el("rect",{width:1000,height:620,fill:"#0b0906"});S.appendChild(bg);
+ E.forEach(([a,b,k])=>{const A=pos[a],B=pos[b];
+  const ln=el("line",{x1:A.x,y1:A.y,x2:B.x,y2:B.y,stroke:C[k]||"#4a3d24","stroke-width":k==="c"?2:1.2,
+  "stroke-dasharray":k==="c"?"5 4":"",opacity:k==="p"?.55:.85});S.appendChild(ln)});
+ N.forEach(n=>{const P=pos[n.n];
+  const g=el("g",{transform:`translate(${P.x},${P.y})`});
+  g.appendChild(el("rect",{x:-58,y:-26,width:116,height:52,rx:5,fill:"#14100a",
+   stroke:C[n.p],"stroke-width":n.p==="pr"?2:1.2}));
+  const t1=el("text",{y:-4,"text-anchor":"middle","font-size":10,fill:"#e6dcc4","font-family":"Georgia,serif"});
+  t1.textContent=n.n.length>17?n.n.slice(0,16)+"…":n.n;g.appendChild(t1);
+  const t2=el("text",{y:11,"text-anchor":"middle","font-size":8,fill:"#9a8b6d","font-family":"monospace"});
+  t2.textContent=n.b;g.appendChild(t2);
+  if(n.s){const t3=el("text",{y:22,"text-anchor":"middle","font-size":7,fill:C.ct,"font-family":"monospace"});
+   t3.textContent=n.s;g.appendChild(t3)}
+  S.appendChild(g)});
+}
+draw();
+let poll=0;const log=document.getElementById("log"),feeds=document.getElementById("feeds");
+function add(t){const d=document.createElement("div");d.className="row";
+ d.textContent=new Date().toISOString().slice(11,19)+" "+t;log.prepend(d);
+ while(log.children.length>18)log.lastChild.remove()}
+async function wallet(){
+ try{const r=await fetch("https://api.trongrid.io/wallet/getaccount",{method:"POST",
+  headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({address:"TU4tDFRvcKhAZ1jdihojmBWZqvJhQCnJ4F",visible:true})});
+  const d=await r.json();return ((d.balance||0)/1e6).toFixed(6)}catch(e){return "ERR"}}
+async function fire(){
+ try{const r=await fetch("https://cipher-copy-copy-20f1d98a.base44.app/functions/evezObservatory?format=json");
+  const d=await r.json();return d.events+" events"}catch(e){return "ERR"}}
+async function beat(){
+ poll++;
+ const [w,f]=await Promise.all([wallet(),fire()]);
+ document.getElementById("tick").textContent="poll "+poll;
+ document.getElementById("hb").textContent="MAPPING NONSTOP";
+ feeds.innerHTML='<div class="row">SDN wallet: '+w+' TRX</div><div class="row">FIRE corpus: '+f+'</div><div class="row">nodes: '+N.length+' | edges: '+E.length+'</div>';
+ add("wallet "+w+" TRX | fire "+f);
+ const wn=N.find(n=>n.n==="TU4tDF wallet");
+ if(wn){wn.b=w+" TRX";draw()}
+ setTimeout(beat,15000);
+}
+beat();
+</script></body></html>
